@@ -1,0 +1,151 @@
+
+<!DOCTYPE HTML>
+<html lang = "en">
+<head>
+  <title>Index</title>
+  <style>
+    .hidden {
+      display: none;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: 300px;
+    }
+    .list-wrapper {
+      display: inline-block;
+    }
+  </style>
+  <meta charset = "UTF-8" />
+</head>
+
+<body>
+  <h1>Todo list application</h1>
+  <div class="list-wrapper">
+    <h2>Todo lists</h2>
+    <ul id="lists">
+      {% for list in lists %}
+      <li><input class="chk-box-list" data-id="{{ list.id }}" type="checkbox" {% if list.completed %} checked {% endif %}/>
+        <a href="/todo-list/{{ list.id }}">{{ list.name }}</a>
+        <button data-id="{{ list.id }}" class="delete-btn-list">&cross;</button>
+      </li>
+      {% endfor %}
+    </ul>
+    <form id="list-form">
+      <label>Enter new todo list:</label>
+      <input type="text" id="list-name" name="list-name"><br>
+      <input type="submit" value="Submit">
+    </form>
+  </div>
+
+  <div class="list-wrapper">
+    <h2>Todo Items</h2>
+    <div id="error" class="hidden">Something went wrong!</div>
+    <ul id="todos">
+      {% for item in items %}
+      <li><input class="chk-box-item" data-id="{{ item.id }}" type="checkbox" {% if item.completed %} checked {% endif %}/>
+        {{ item.description }}
+        <button data-id="{{ item.id }}" class="delete-btn-item">&cross;</button>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <form id="item-form">
+      <input id="list_id" type="hidden" value="{{ active_list_id }}">
+      <label>Enter new todo item:</label>
+      <input type="text" id="description" name="description"><br>
+      <input type="submit" value="Submit">
+    </form>
+    </div>
+
+  <script>
+    //func to add delete buttons event handler
+    const addDeleteButtons = (path, btnClass) => {
+      const delButtons = document.querySelectorAll(btnClass);
+      for (let i = 0; i < delButtons.length; i++) {
+        const btn = delButtons[i];
+        btn.onclick = (e) => {
+          const id = e.target.dataset['id'];
+          fetch(`${path}${id}/delete`, {
+            method: "DELETE"
+          }).then((response) => {
+            return response.json()
+          }).then((jsonResponse) => {
+            if (jsonResponse.success) {
+              liToDelete = btn.parentElement;
+              liToDelete.parentElement.removeChild(liToDelete)
+              window.location.reload()
+            }
+          });
+        }
+      }
+    }
+    addDeleteButtons('/todo-item/', '.delete-btn-item');
+    addDeleteButtons('/todo-list/', '.delete-btn-list');
+    
+    //func to add checkbox event handler
+    const addCheckBoxes = (path, chkClass) => {
+      const checkboxes = document.querySelectorAll(chkClass);
+      for (let i = 0; i < checkboxes.length; i++) {
+        const checkbox = checkboxes[i];
+        checkbox.onchange = (e) => {
+          const newCompleted = e.target.checked;
+          const id = e.target.dataset['id'];
+          fetch(`${path}${id}/update`, {
+            method: "POST",
+            body: JSON.stringify({
+              'completed': newCompleted
+            }),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }).then((response) => {
+            window.location.reload()
+          });
+        }
+      }
+    }
+    addCheckBoxes('/todo-item/', '.chk-box-item');
+    addCheckBoxes('/todo-list/', '.chk-box-list');
+
+    //func to add creation event handler
+    const addCreateHandler = (path, formId, type, body) => {
+      document.getElementById(formId).onsubmit = function (e) {
+        e.preventDefault();
+        fetch(`${path}create`, {
+          method: 'POST',
+          body: body(),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }).then((response) => {
+          return response.json();
+        }).then((jsonResponse) => {
+          window.location.reload()
+        }).catch(() => {
+          document.getElementById("error").className = '';
+        })
+      }
+    }
+    const activeListId = document.getElementById('list_id').value
+    const itemBody = () => { 
+      return JSON.stringify({
+          description: document.getElementById("description").value,
+          listId: activeListId
+        })
+    }
+    const listBody = () => {
+      return JSON.stringify({
+          name: document.getElementById("list-name").value
+        })
+    }
+    addCreateHandler('/todo-item/', 'item-form', "item", itemBody);
+    addCreateHandler(`/todo-list/`, 'list-form', "list", listBody);
+  </script>
+</body>
+</html>
+
